@@ -1,0 +1,143 @@
+/****************************************************************
+*  Isim    : LPC1343 USB Hid Demo Uygulamasi		     	*
+*  Yazar   : Erhan YILMAZ                                       *
+*  E-posta : erhanyilmaz.ytu@gmail.com                          *
+*  Tarih   : 14.01.2013                                         *
+*  Sürüm   : 1.0                                                *
+****************************************************************/
+
+#include "lpc17xx.h"                        /* LPC13xx definitions */
+
+#include "usb.h"
+#include "usbdesc.h"
+#include "rom_drivers.h"
+#include "config.h"
+
+#define     EN_TIMER32_1    (1<<10)
+#define     EN_IOCON        (1<<16)
+#define     EN_USBREG       (1<<14)
+
+USB_DEV_INFO DeviceInfo;		// USB aygit bilgilerini içeren yapi tanimlanir
+HID_DEVICE_INFO HidDevInfo;	// HID aygit bilgilerini içeren yapi tanimlanir
+ROM ** rom = (ROM **)0x1fff1ff8;	// ROM'daki USB fonksiyonlar1n1 çagirmak için isaretci tanimlanir.
+
+void setPWM(void);
+void ADC_Init(void);
+uint16_t ADC0_Oku();
+uint16_t ADC_Data;
+
+/*
+ *  Get HID Input Report -> InReport
+ */
+
+void GetInReport (uint8_t src[], uint32_t length)
+{
+	ADC_Data = ADC0_Oku();
+	src[0]=(uint8_t)((ADC_Data>>2)&0xff); // ADC sonucunu gönder
+	// LED durum bilgisini gönder
+	if(LPC_GPIO0->DATA&(1<<7))
+		src[1]='E';
+	else
+	  src[1]='H';
+}
+
+/*
+ *  Set HID Output Report <- OutReport
+ */
+void SetOutReport (uint8_t dst[], uint32_t length)
+{
+	// Alinan veriye göre PWM'i ayarla
+	LPC_TMR16B1->MR0 = dst[0]*100;
+	// Alinan veriye göre LED'in durumunu belirle
+	if(dst[1]=='E')
+	LPC_GPIO0 -> DATA |= (1<<7);
+	else
+	LPC_GPIO0 -> DATA &= ~(1<<7);
+
+}
+
+int main (void)
+{
+  /* for delay loop */
+  volatile int n;
+  HidDevInfo.idVendor = USB_VENDOR_ID;	// Üretici ID'si (NXP)
+  HidDevInfo.idProduct = USB_PROD_ID;		// Üretici ürün ID'si
+  HidDevInfo.bcdDevice = USB_DEVICE;
+  HidDevInfo.StrDescPtr = (uint32_t)&USB_StringDescriptor[0];
+  HidDevInfo.InReportCount = 2;		// PC'ye gönderilecek byte sayisi (max 64 byte)
+  HidDevInfo.OutReportCount = 2;	// PC'den alinacak byte sayisi (max 64 byte)
+  HidDevInfo.SampleInterval = 0xFF;	// Veri gönderme alma araligi (ms)
+  HidDevInfo.InReport = GetInReport;	// Veri gönderme fonksiyonu gösterilir.
+  HidDevInfo.OutReport = SetOutReport;	// Veri alma fonksiyonu gösterilir.
+
+  DeviceInfo.DevType = USB_DEVICE_CLASS_HUMAN_INTERFACE;
+  DeviceInfo.DevDetailPtr = (uint32_t)&HidDevInfo;
+
+  /* Enable Timer32_1, IOCON, and USB blocks (for USB ROM driver) */
+  LPC_SYSCON->SYSAHBCLKCTRL |= (EN_TIMER32_1 | EN_IOCON | EN_USBREG);
+
+  /* Use pll and pin init function in rom */
+  (*rom)->pUSBD->init_clk_pins();
+
+  /* insert a delay between clk init and usb init */
+  for (n = 0; n < 75; n++) {}
+
+  (*rom)->pUSBD->init(&DeviceInfo); /* USB Initialization */
+  (*rom)->pUSBD->connect(TRUE);     /* USB Connect */
+
+  LPC_GPIO0 -> DIR |= 1<<7;	   //GPIO0_7 pini çikis olarak ayarlandi.
+	ADC_Init();
+	setPWM();
+	__WFI();	// Kesme gelene kadar bekle
+  while (1);
+
+}
+
+// USB kesme fonksiyonu
+void USB_IRQHandler()
+{
+  (*rom)->pUSBD->isr();
+}
+
+// PWM Ayarlari
+void setPWM(void)
+{
+
+	LPC_SYSCON->SYSAHBCLKCTRL 	|= (1<<8);  	// Timer1 clock'u aç
+	LPC_IOCON->PIO1_9           |= 0x01;      // Timer1_16 MAT0 - set bit 1
+	LPC_TMR16B1->MCR 			= 0x0400;       		// Reset at MR3
+	LPC_TMR16B1->MR0 			= 7500;        			// Match register 0 = 7500 = 2%5 duty cycle ilk deger %25
+	LPC_TMR16B1->MR3 			= 10000;        		// Match register 3 - cycle length
+	LPC_TMR16B1->PWMC 			= 0x01;           // PWMC register -MAT0 is PWM.
+	LPC_TMR16B1->TCR = 1;   									// timer1'i aç
+}
+
+// ADC Ayarlari
+void ADC_Init(){
+
+  LPC_SYSCON->PDRUNCFG &= ~(0x1<<4); // Disable Power down bit to the ADC block.
+  LPC_SYSCON->SYSAHBCLKCTRL |= (1<<13);	 // Enable AHB clock to the ADC.
+  LPC_IOCON->JTAG_TDI_PIO0_11   = 0x02;	// Select AD0 pin function
+  LPC_ADC->CR = (10<<8);	//CLKDIV=10 ADC Clock=PCLK/(CLKDIV+1)=48MHz/11=4.36MHz
+  LPC_ADC->CR &= 0xFFFFFF00; // clear channel selection
+  LPC_ADC->CR |=(1 << 0); //Kanal 0 seç
+
+}
+
+// ADC0 Kanalini Oku
+uint16_t ADC0_Oku(){
+	uint32_t regval;
+  LPC_ADC->CR |= (1 << 24); // Çevrimi baslat.
+  while ( 1 )			// wait until end of A/D convert
+  {
+	regval = LPC_ADC->DR0;
+	// read result of A/D conversion
+	if ( regval & (0x80000000) )
+	break;
+  }
+  LPC_ADC->CR &= 0xF8FFFFFF;	// stop ADC now
+  return (uint16_t)((regval >> 6)&0x03ff);
+}
+
+
+
