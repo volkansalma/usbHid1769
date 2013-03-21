@@ -85,7 +85,7 @@ namespace JoystickTest
             // set the timer to go off 12 times a second to read input
             // NOTE: Normally applications would read this much faster.
             // This rate is for demonstration purposes only.
-            timer.Interval = 1000 / 100;
+            timer.Interval = 1000 / 1000;
             timer.Start();
         }
 
@@ -163,6 +163,7 @@ namespace JoystickTest
             String test4 = state.ToString();
 
             label_S0.Text = slider[0].ToString(CultureInfo.CurrentCulture);
+
             label_S1.Text = slider[1].ToString(CultureInfo.CurrentCulture);
 
             int[] pov = state.GetPointOfViewControllers();
