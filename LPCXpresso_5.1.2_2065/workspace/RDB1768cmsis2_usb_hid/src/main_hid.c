@@ -49,23 +49,30 @@ __CRP const unsigned int CRP_WORD = CRP_NO_CRP ;
 
 unsigned char arrayTest[] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18}; //6 nın katı olmalı
 
-int newData = 0;
+int newDataToSend = 0;
 
 int main(void)
 {
-
+	int count = 0;
 	fs_USB_Init();
 
 	// call USB interrupt handler continuously
 	while (1)
 	{
-		if(newDataSend)
+		if(newDataToSend)
 		{
+			newDataToSend = 0;
 			fs_USB_send_usb_data(&arrayTest[0], sizeof(arrayTest));
-			newDataSend = 0;
+
 		}
 
-		fs_USB_interrupt_handler();
+		count++;
+		if(count > 90000)
+		{
+			count = 0;
+			newDataToSend = 1;
+		}
+
 	}
 
 	return 0;

@@ -261,6 +261,7 @@ void fs_USB_send_usb_data(unsigned char *pArray, int dataSize)
 
 	for(i = 1; i <= dataSize/6; i++)
 	{
+
 		abReport[0] = i; //ilk değer index
 		abReport[1] = pArray[(6*(i-1)) + 0];
 		abReport[2] = pArray[(6*(i-1)) + 1];
@@ -269,17 +270,21 @@ void fs_USB_send_usb_data(unsigned char *pArray, int dataSize)
 		abReport[5] = pArray[(6*(i-1)) + 4];
 		abReport[6] = pArray[(6*(i-1)) + 5];
 
+		//3 kere tekrar at. datayı kaçırmaya karşı
 		fs_USB_interrupt_handler();
-		fs_USB_delay_for_send_part(10);
+		fs_USB_delay_for_send_part(30);
+		fs_USB_interrupt_handler();
+		fs_USB_delay_for_send_part(30);
+		fs_USB_interrupt_handler();
+		fs_USB_delay_for_send_part(30);
+		fs_USB_interrupt_handler();
+		fs_USB_delay_for_send_part(30);
+		fs_USB_interrupt_handler();
+		fs_USB_delay_for_send_part(30);
+		fs_USB_interrupt_handler();
+		fs_USB_delay_for_send_part(30);
 
 	}
 
-	abReport[0] = 0;
-	abReport[1] = 0;
-	abReport[2] = 0;
-	abReport[3] = 0;
-	abReport[4] = 0;
-	abReport[5] = 0;
-	abReport[6] = 0;
 
 }

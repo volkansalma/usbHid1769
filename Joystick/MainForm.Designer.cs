@@ -60,6 +60,7 @@ namespace JoystickTest
             this.timer = new System.Windows.Forms.Timer(this.components);
             this.exitButton = new System.Windows.Forms.Button();
             this.createDeviceButton = new System.Windows.Forms.Button();
+            this.listBox1 = new System.Windows.Forms.ListBox();
             this.groupBox_JoystickState.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -379,7 +380,7 @@ namespace JoystickTest
             // 
             // createDeviceButton
             // 
-            this.createDeviceButton.Location = new System.Drawing.Point(110, 280);
+            this.createDeviceButton.Location = new System.Drawing.Point(100, 280);
             this.createDeviceButton.Name = "createDeviceButton";
             this.createDeviceButton.Size = new System.Drawing.Size(89, 23);
             this.createDeviceButton.TabIndex = 6;
@@ -387,11 +388,21 @@ namespace JoystickTest
             this.createDeviceButton.UseVisualStyleBackColor = true;
             this.createDeviceButton.Click += new System.EventHandler(this.createDeviceButton_Click);
             // 
+            // listBox1
+            // 
+            this.listBox1.FormattingEnabled = true;
+            this.listBox1.Location = new System.Drawing.Point(324, 51);
+            this.listBox1.Name = "listBox1";
+            this.listBox1.ScrollAlwaysVisible = true;
+            this.listBox1.Size = new System.Drawing.Size(538, 199);
+            this.listBox1.TabIndex = 7;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(286, 312);
+            this.ClientSize = new System.Drawing.Size(960, 438);
+            this.Controls.Add(this.listBox1);
             this.Controls.Add(this.createDeviceButton);
             this.Controls.Add(this.exitButton);
             this.Controls.Add(this.label_Message);
@@ -439,6 +450,7 @@ namespace JoystickTest
         private System.Windows.Forms.Timer timer;
         private System.Windows.Forms.Button exitButton;
         private System.Windows.Forms.Button createDeviceButton;
+        private System.Windows.Forms.ListBox listBox1;
     }
 }
 

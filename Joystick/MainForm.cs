@@ -62,19 +62,14 @@ namespace JoystickTest
                 return;
             }
 
-            int test = 0;
             foreach (DeviceObjectInstance deviceObject in joystick.GetObjects())
             {
                 
                 if ((deviceObject.ObjectType & ObjectDeviceType.Axis) != 0)
                 {
                     joystick.GetObjectPropertiesById((int)deviceObject.ObjectType).SetRange(0, 255);
-                    test++;
                 }
-                else
-                {
-                    test++;
-                }
+ 
                 
                 UpdateControl(deviceObject);
             }
@@ -85,7 +80,7 @@ namespace JoystickTest
             // set the timer to go off 12 times a second to read input
             // NOTE: Normally applications would read this much faster.
             // This rate is for demonstration purposes only.
-            timer.Interval = 1000 / 1000;
+            timer.Interval = 5; // 1000 / 1000;
             timer.Start();
         }
 
@@ -102,7 +97,8 @@ namespace JoystickTest
             if (Result.Last.IsFailure)
                 return;
 
-            UpdateUI();
+            UpdateUI();  // new Data
+
         }
 
         void ReleaseDevice()
@@ -138,10 +134,17 @@ namespace JoystickTest
 
         void UpdateUI()
         {
+            String[] incomingDataFromUSB = new String[7]; //usb den gelen 7 bytelýk paketimiz
+
+
             if (joystick == null)
+            {
                 createDeviceButton.Text = "Create Device";
+            }
             else
+            {
                 createDeviceButton.Text = "Release Device";
+            }
 
             string strText = null;
 
@@ -181,6 +184,96 @@ namespace JoystickTest
                     strText += b.ToString("00 ", CultureInfo.CurrentCulture);
             }
             label_ButtonList.Text = strText;
+
+
+
+            //fs
+            incomingDataFromUSB[0] = slider[0].ToString(CultureInfo.CurrentCulture); //index ilk byte.
+            incomingDataFromUSB[1] = state.X.ToString(CultureInfo.CurrentCulture); //byte1
+            incomingDataFromUSB[2] = state.Y.ToString(CultureInfo.CurrentCulture); //byte1
+            incomingDataFromUSB[3] = state.Z.ToString(CultureInfo.CurrentCulture); //byte1
+            incomingDataFromUSB[4] = state.RotationX.ToString(CultureInfo.CurrentCulture); //byte1
+            incomingDataFromUSB[5] = state.RotationY.ToString(CultureInfo.CurrentCulture); //byte1
+            incomingDataFromUSB[6] = state.RotationZ.ToString(CultureInfo.CurrentCulture); //byte1
+
+            fs_dataProcessStateMachine(incomingDataFromUSB);
+
+        }
+
+        private static int fs_state = 0; //machine durumumuz
+        private String[] dataAll = new String[18];
+
+        void fs_dataProcessStateMachine(String[] data)
+        {
+            switch (fs_state)
+            {
+                case 0:
+                    if (data[0] == "1") //1 indexli datanýn ilk kýsmý geldi.  ilk kýsmý al ve 1. state egeç
+                    {
+                        dataAll[0] = data[1];
+                        dataAll[1] = data[2];
+                        dataAll[2] = data[3];
+                        dataAll[3] = data[4];
+                        dataAll[4] = data[5];
+                        dataAll[5] = data[6];
+                        
+                        fs_state = 1;
+                    }
+                    else //baþka biþey geldiyse yanlýþ data. baþlangýç stateine geri dön
+                    {
+                        fs_state = 0;
+                    }
+                    break;
+                
+                case 1:
+                    if (data[0] == "2") ////2 indexli datanýn ikinci kýsmý geldi.  ikinci kýsmý al ve 2. state egeç
+                    {
+                        dataAll[6] = data[1];
+                        dataAll[7] = data[2];
+                        dataAll[8] = data[3];
+                        dataAll[9] = data[4];
+                        dataAll[10] = data[5];
+                        dataAll[11] = data[6];
+
+                        fs_state = 2;
+                    }
+                    else if (data[0] == "1") //bir önceki statin datasý tekrar geldi bekle
+                    {
+                    }
+                    else //baþka biþey geldiyse yanlýþ data. baþlangýç stateine geri dön
+                    {
+                        fs_state = 0;
+                    }
+                    break;
+                
+                case 2:
+                    if (data[0] == "3") ////3 indexli datanýn son kýsmýda geldi.  data tamamlandý ekrana yaz. tekrar 1. state egeç
+                    {
+                        dataAll[12] = data[1];
+                        dataAll[13] = data[2];
+                        dataAll[14] = data[3];
+                        dataAll[15] = data[4];
+                        dataAll[16] = data[5];
+                        dataAll[17] = data[6];
+
+                        fs_state = 0;
+
+                        listBox1.Items.Add(dataAll.ToString());
+                    }
+                    else if (data[0] == "2") //bir önceki statin datasý tekrar geldi bekle
+                    {
+                    }
+                    else //baþka biþey geldiyse yanlýþ data. baþlangýç stateine geri dön
+                    {
+                        fs_state = 0;
+                    }
+                    break;
+                
+                default:
+                    fs_state = 0;
+                    break;
+
+            }
         }
 
         void UpdateControl(DeviceObjectInstance d)
